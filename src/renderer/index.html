@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'">
+  <title>SQLWhisperer</title>
+  <link rel="stylesheet" href="../../node_modules/@xterm/xterm/css/xterm.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #1e1e1e;
+      color: #cccccc;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Header */
+    .header {
+      background-color: #323233;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border-bottom: 1px solid #3c3c3c;
+    }
+
+    .header h1 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      background-color: #252526;
+      border-bottom: 1px solid #3c3c3c;
+    }
+
+    .tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: #808080;
+      font-size: 13px;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .tab:hover {
+      color: #cccccc;
+      background-color: #2a2a2a;
+    }
+
+    .tab.active {
+      color: #ffffff;
+      border-bottom-color: #0078d4;
+      background-color: #1e1e1e;
+    }
+
+    /* Content panels */
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel.active {
+      display: flex;
+    }
+
+    /* Terminal panel */
+    .terminal-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background-color: #0c0c0c;
+    }
+
+    .terminal-toolbar {
+      display: flex;
+      gap: 8px;
+      padding: 8px 12px;
+      background-color: #252526;
+      border-bottom: 1px solid #3c3c3c;
+    }
+
+    .terminal-toolbar button {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      transition: background-color 0.2s;
+    }
+
+    .btn-claude {
+      background-color: #6b2fba;
+      color: #ffffff;
+    }
+
+    .btn-claude:hover {
+      background-color: #7c3fd1;
+    }
+
+    .btn-secondary {
+      background-color: #3c3c3c;
+      color: #cccccc;
+    }
+
+    .btn-secondary:hover {
+      background-color: #4c4c4c;
+    }
+
+    #terminal {
+      flex: 1;
+      padding: 8px;
+    }
+
+    /* Assistant panel */
+    .assistant-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      background-color: #252526;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .message {
+      margin-bottom: 16px;
+      padding: 12px;
+      border-radius: 8px;
+    }
+
+    .message.user {
+      background-color: #0e639c;
+      margin-left: 20%;
+    }
+
+    .message.assistant {
+      background-color: #3c3c3c;
+      margin-right: 20%;
+    }
+
+    .chat-input {
+      display: flex;
+      gap: 8px;
+    }
+
+    .chat-input textarea {
+      flex: 1;
+      padding: 12px;
+      border: 1px solid #3c3c3c;
+      border-radius: 8px;
+      background-color: #252526;
+      color: #ffffff;
+      font-family: inherit;
+      font-size: 14px;
+      resize: none;
+    }
+
+    .chat-input textarea:focus {
+      outline: none;
+      border-color: #0078d4;
+    }
+
+    .chat-input button {
+      padding: 12px 24px;
+      background-color: #0e639c;
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .chat-input button:hover {
+      background-color: #1177bb;
+    }
+
+    /* Mapping panel */
+    .mapping-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      overflow: hidden;
+    }
+
+    .mapping-header {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 16px;
+      align-items: center;
+    }
+
+    .mapping-header select {
+      padding: 10px 14px;
+      border-radius: 6px;
+      border: 1px solid #404040;
+      background-color: #2d2d2d;
+      color: #ffffff;
+      font-size: 14px;
+      cursor: pointer;
+      min-width: 200px;
+    }
+
+    .mapping-header select:hover {
+      border-color: #FFD600;
+    }
+
+    .mapping-header select:focus {
+      outline: none;
+      border-color: #FFD600;
+      box-shadow: 0 0 0 2px rgba(255, 214, 0, 0.2);
+    }
+
+    .mapping-header select option {
+      background-color: #2d2d2d;
+      color: #ffffff;
+    }
+
+    #mapping-select {
+      border-color: #FFD600;
+      background-color: #3a3a2a;
+    }
+
+    #mapping-select:hover {
+      background-color: #454530;
+    }
+
+    .mapping-workspace {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 2fr 1fr;
+      gap: 16px;
+      overflow: hidden;
+    }
+
+    .mapping-panel {
+      background-color: #252526;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .mapping-panel-header {
+      padding: 14px 16px;
+      background-color: #1a1a1a;
+      border-bottom: 2px solid #FFD600;
+      font-weight: 600;
+      font-size: 14px;
+      color: #ffffff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .mapping-panel-header span:first-child {
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .mapping-panel-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      background-color: #1e1e1e;
+    }
+
+    .field-item {
+      padding: 12px 14px;
+      margin: 6px 0;
+      background-color: #2d2d2d;
+      border-radius: 6px;
+      cursor: grab;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+      transition: all 0.2s;
+      border: 1px solid #404040;
+    }
+
+    .field-item:hover {
+      border-color: #FFD600;
+      background-color: #353535;
+      transform: translateX(2px);
+    }
+
+    .field-item.dragging {
+      opacity: 0.5;
+      border-color: #FFD600;
+    }
+
+    .field-item .field-name {
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .field-item .field-type {
+      font-size: 11px;
+      color: #e0e0e0;
+      padding: 3px 8px;
+      background-color: #505050;
+      border-radius: 4px;
+      font-family: 'Consolas', monospace;
+    }
+
+    .field-item.required .field-name::after {
+      content: ' *';
+      color: #FFD600;
+      font-weight: bold;
+    }
+
+    .mapping-area {
+      background-color: #1a1a1a;
+      border: 2px dashed #505050;
+      border-radius: 8px;
+      min-height: 200px;
+      padding: 16px;
+    }
+
+    .mapping-area.drag-over {
+      border-color: #FFD600;
+      background-color: #252526;
+      border-style: solid;
+    }
+
+    .mapping-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      background-color: #2a2a2a;
+      border: 1px solid #3c3c3c;
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+
+    .mapping-row:hover {
+      border-color: #505050;
+      background-color: #303030;
+    }
+
+    .mapping-row .source-field,
+    .mapping-row .target-field {
+      flex: 1;
+      padding: 10px 14px;
+      background-color: #2d2d2d;
+      border: 1px solid #404040;
+      border-radius: 6px;
+      font-size: 14px;
+      color: #ffffff;
+      cursor: pointer;
+    }
+
+    .mapping-row .source-field:hover,
+    .mapping-row .target-field:hover {
+      border-color: #0078d4;
+    }
+
+    .mapping-row .source-field:focus,
+    .mapping-row .target-field:focus {
+      outline: none;
+      border-color: #0078d4;
+      box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.3);
+    }
+
+    .mapping-row .source-field option,
+    .mapping-row .target-field option {
+      background-color: #2d2d2d;
+      color: #ffffff;
+      padding: 8px;
+    }
+
+    .mapping-row .arrow {
+      color: #FFD600;
+      font-size: 20px;
+      font-weight: bold;
+      padding: 0 4px;
+    }
+
+    .mapping-row .transform-badge {
+      font-size: 12px;
+      padding: 4px 10px;
+      background-color: #6b2fba;
+      color: #ffffff;
+      border-radius: 4px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .mapping-row .delete-btn {
+      background-color: #3c3c3c;
+      border: none;
+      color: #a0a0a0;
+      cursor: pointer;
+      padding: 6px 10px;
+      font-size: 16px;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .mapping-row .delete-btn:hover {
+      color: #ffffff;
+      background-color: #f14c4c;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: #808080;
+    }
+
+    .empty-state p {
+      margin: 8px 0;
+    }
+
+    .rules-panel {
+      margin-top: 16px;
+    }
+
+    .rule-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      background-color: #2d2d2d;
+      border: 1px solid #404040;
+      border-radius: 6px;
+      margin: 6px 0;
+      font-size: 13px;
+    }
+
+    .rule-item:hover {
+      border-color: #505050;
+      background-color: #353535;
+    }
+
+    .rule-item .rule-toggle {
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #2ea043;
+      color: #ffffff;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .rule-item .rule-toggle.disabled {
+      background-color: #505050;
+      color: #808080;
+    }
+
+    .rule-item .rule-toggle:hover {
+      opacity: 0.8;
+    }
+
+    .rule-item .rule-type {
+      padding: 4px 10px;
+      background-color: #0e639c;
+      color: #ffffff;
+      border-radius: 4px;
+      font-size: 11px;
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .rule-item .rule-name {
+      flex: 1;
+      color: #ffffff;
+      font-weight: 500;
+    }
+
+    .rule-item .rule-desc {
+      color: #FFD600;
+      cursor: help;
+      font-size: 14px;
+    }
+
+    .rule-item .rule-edit-btn,
+    .rule-item .rule-delete-btn {
+      background-color: #3c3c3c;
+      border: none;
+      color: #a0a0a0;
+      cursor: pointer;
+      padding: 5px 8px;
+      font-size: 14px;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .rule-item .rule-edit-btn:hover {
+      color: #ffffff;
+      background-color: #0e639c;
+    }
+
+    .rule-item .rule-delete-btn:hover {
+      color: #ffffff;
+      background-color: #f14c4c;
+    }
+
+    .btn-add {
+      padding: 8px 16px;
+      background-color: #FFD600;
+      color: #000000;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .btn-add:hover {
+      background-color: #FFC107;
+      transform: translateY(-1px);
+    }
+
+    /* Welcome panel */
+    .welcome {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      text-align: center;
+    }
+
+    .welcome h2 {
+      font-size: 28px;
+      margin-bottom: 16px;
+      color: #ffffff;
+    }
+
+    .welcome p {
+      font-size: 16px;
+      color: #808080;
+      max-width: 600px;
+      line-height: 1.6;
+    }
+
+    .feature-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 32px;
+      max-width: 800px;
+    }
+
+    .feature-card {
+      background-color: #252526;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+    }
+
+    .feature-card:hover {
+      border-color: #0078d4;
+      transform: translateY(-2px);
+    }
+
+    .feature-card h3 {
+      font-size: 14px;
+      margin-bottom: 8px;
+      color: #ffffff;
+    }
+
+    .feature-card p {
+      font-size: 12px;
+      color: #808080;
+    }
+
+    /* Settings panel */
+    .settings-container {
+      flex: 1;
+      padding: 24px 32px;
+      overflow-y: auto;
+      max-width: 800px;
+    }
+
+    .settings-container h2 {
+      font-size: 24px;
+      color: #ffffff;
+      margin-bottom: 8px;
+    }
+
+    .settings-desc {
+      color: #808080;
+      margin-bottom: 24px;
+    }
+
+    .settings-section {
+      background-color: #252526;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border: 1px solid #3c3c3c;
+    }
+
+    .settings-section h3 {
+      font-size: 16px;
+      color: #FFD600;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #3c3c3c;
+    }
+
+    .settings-group {
+      margin-bottom: 16px;
+    }
+
+    .settings-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .settings-group label {
+      display: block;
+      font-size: 13px;
+      color: #cccccc;
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+
+    .settings-group input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #3c3c3c;
+      border-radius: 6px;
+      background-color: #1e1e1e;
+      color: #ffffff;
+      font-size: 14px;
+      font-family: 'Consolas', monospace;
+    }
+
+    .settings-group input:focus {
+      outline: none;
+      border-color: #FFD600;
+      box-shadow: 0 0 0 2px rgba(255, 214, 0, 0.2);
+    }
+
+    .settings-group input::placeholder {
+      color: #606060;
+    }
+
+    .settings-hint {
+      display: block;
+      font-size: 11px;
+      color: #808080;
+      margin-top: 4px;
+    }
+
+    .settings-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .btn-save {
+      padding: 12px 24px;
+      background-color: #FFD600;
+      color: #000000;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .btn-save:hover {
+      background-color: #FFC107;
+      transform: translateY(-1px);
+    }
+
+    #settings-status {
+      font-size: 13px;
+      color: #2ea043;
+    }
+
+    #settings-status.error {
+      color: #f14c4c;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>SQLWhisperer</h1>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="home">Home</button>
+    <button class="tab" data-tab="terminal">Terminal</button>
+    <button class="tab" data-tab="mapping">Mapping</button>
+    <button class="tab" data-tab="assistant">Assistant</button>
+    <button class="tab" data-tab="settings">Settings</button>
+  </div>
+
+  <div class="content">
+    <!-- Home Panel -->
+    <div id="home" class="panel active">
+      <div class="welcome">
+        <h2>SQLWhisperer</h2>
+        <p>GP to Business Central Migration Workbench with Claude AI integration.</p>
+        <div class="feature-cards">
+          <div class="feature-card" data-tab="terminal">
+            <h3>Terminal</h3>
+            <p>Full interactive terminal with Claude CLI support</p>
+          </div>
+          <div class="feature-card" data-tab="mapping">
+            <h3>Field Mapping</h3>
+            <p>Drag-and-drop mapping builder for GP to BC</p>
+          </div>
+          <div class="feature-card" data-tab="assistant">
+            <h3>Migration Assistant</h3>
+            <p>Chat with Claude to build migrations</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Terminal Panel -->
+    <div id="terminal-panel" class="panel">
+      <div class="terminal-container">
+        <div class="terminal-toolbar">
+          <button class="btn-claude" id="run-claude-btn">Run Claude</button>
+          <button class="btn-secondary" id="new-shell-btn">New Shell</button>
+          <button class="btn-secondary" id="clear-terminal-btn">Clear</button>
+        </div>
+        <div id="terminal"></div>
+      </div>
+    </div>
+
+    <!-- Mapping Panel -->
+    <div id="mapping" class="panel">
+      <div class="mapping-container">
+        <div class="mapping-header">
+          <select id="project-select">
+            <option value="">Select Project...</option>
+          </select>
+          <select id="query-select">
+            <option value="">Select Source Query...</option>
+          </select>
+          <select id="mapping-select" style="display: none;">
+            <option value="">Select Mapping...</option>
+          </select>
+          <select id="target-select">
+            <option value="">Select Target Entity...</option>
+            <option value="Customer">Customer</option>
+            <option value="ShipToAddress">Ship-To Address</option>
+            <option value="Vendor">Vendor</option>
+            <option value="RemitToAddress">Remit-To Address</option>
+            <option value="Item">Item</option>
+            <option value="ItemUnitOfMeasure">Item Unit of Measure</option>
+            <option value="PriceListLine">Price List Line</option>
+            <option value="Contact">Contact</option>
+            <option value="ItemAttribute">Item Attribute</option>
+            <option value="ItemAttributeValue">Item Attribute Value</option>
+            <option value="ItemAttributeValueMapping">Item Attribute Value Mapping</option>
+            <option value="ItemReference">Item Reference</option>
+            <option value="BOM">Bill of Materials (BOM)</option>
+            <option value="BOMComponent">BOM Component</option>
+          </select>
+          <button class="btn-add" id="refresh-btn">Refresh</button>
+        </div>
+
+        <div class="mapping-workspace">
+          <!-- Source Fields -->
+          <div class="mapping-panel">
+            <div class="mapping-panel-header">
+              <span>Source Fields</span>
+              <span id="source-count">0 fields</span>
+            </div>
+            <div class="mapping-panel-content" id="source-fields">
+              <div class="empty-state">
+                <p>Select a query to see source fields</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mapping Area -->
+          <div class="mapping-panel">
+            <div class="mapping-panel-header">
+              <span>Field Mappings</span>
+              <button class="btn-add" id="add-mapping-btn">+ Add Mapping</button>
+            </div>
+            <div class="mapping-panel-content">
+              <div class="mapping-area" id="mapping-area">
+                <div class="empty-state" id="mapping-empty">
+                  <p>Drag fields here to create mappings</p>
+                  <p>or click "Add Mapping" to add manually</p>
+                </div>
+                <div id="mapping-rows"></div>
+              </div>
+
+              <div class="rules-panel">
+                <div class="mapping-panel-header" style="margin-top: 16px; border-radius: 6px 6px 0 0;">
+                  <span>Rules</span>
+                  <button class="btn-add" id="add-rule-btn">+ Add Rule</button>
+                </div>
+                <div id="rules-list" style="background: #1e1e1e; padding: 12px; border-radius: 0 0 6px 6px; border: 1px solid #3c3c3c; border-top: none;">
+                  <div class="empty-state" style="padding: 20px;">
+                    <p>No rules defined for this mapping</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Target Fields -->
+          <div class="mapping-panel">
+            <div class="mapping-panel-header">
+              <span>Target Fields</span>
+              <span id="target-count">0 fields</span>
+            </div>
+            <div class="mapping-panel-content" id="target-fields">
+              <div class="empty-state">
+                <p>Select a target entity to see fields</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Assistant Panel -->
+    <div id="assistant" class="panel">
+      <div class="assistant-container">
+        <div class="chat-messages" id="chat-messages">
+          <div class="message assistant">
+            <p>Hello! I'm the Migration Assistant. I can help you build GP to Business Central migrations.</p>
+            <p>Tell me what you'd like to migrate, and I'll help you:</p>
+            <ul>
+              <li>Query the GP database</li>
+              <li>Propose field mappings</li>
+              <li>Generate SQL queries and BC APIs</li>
+              <li>Push to git when ready</li>
+            </ul>
+          </div>
+        </div>
+        <div class="chat-input">
+          <textarea id="user-input" placeholder="Describe what you want to migrate..." rows="3"></textarea>
+          <button id="send-message-btn">Send</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Panel -->
+    <div id="settings" class="panel">
+      <div class="settings-container">
+        <h2>Settings</h2>
+        <p class="settings-desc">Configure SQLWhisperer for your environment. Settings are saved automatically.</p>
+
+        <div class="settings-section">
+          <h3>Business Central</h3>
+          <div class="settings-group">
+            <label for="bc-environment-url">Environment URL</label>
+            <input type="text" id="bc-environment-url" placeholder="https://api.businesscentral.dynamics.com/v2.0/tenant-id/environment-name">
+            <span class="settings-hint">The BC API base URL for your environment</span>
+          </div>
+          <div class="settings-group">
+            <label for="bc-company-id">Company ID</label>
+            <input type="text" id="bc-company-id" placeholder="00000000-0000-0000-0000-000000000000">
+            <span class="settings-hint">The GUID of the company in Business Central</span>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>Azure Data Factory</h3>
+          <div class="settings-group">
+            <label for="azure-subscription-id">Subscription ID</label>
+            <input type="text" id="azure-subscription-id" placeholder="00000000-0000-0000-0000-000000000000">
+          </div>
+          <div class="settings-group">
+            <label for="azure-resource-group">Resource Group</label>
+            <input type="text" id="azure-resource-group" placeholder="my-resource-group">
+          </div>
+          <div class="settings-group">
+            <label for="azure-factory-name">Factory Name</label>
+            <input type="text" id="azure-factory-name" placeholder="my-adf-factory">
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>Paths</h3>
+          <div class="settings-group">
+            <label for="path-adf-repo">ADF Repository Path</label>
+            <input type="text" id="path-adf-repo" placeholder="C:\path\to\adf\repo">
+            <span class="settings-hint">Local path to the ADF git repository</span>
+          </div>
+          <div class="settings-group">
+            <label for="path-extension">BC Extension Path</label>
+            <input type="text" id="path-extension" placeholder="C:\path\to\bc\extension">
+            <span class="settings-hint">Local path to the Business Central AL extension</span>
+          </div>
+          <div class="settings-group">
+            <label for="path-results">Results Path</label>
+            <input type="text" id="path-results" placeholder="C:\path\to\results">
+            <span class="settings-hint">Where query results are stored</span>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>Pipeline</h3>
+          <div class="settings-group">
+            <label for="pipeline-name">Default Pipeline Name</label>
+            <input type="text" id="pipeline-name" placeholder="SQLWhisperer">
+          </div>
+          <div class="settings-group">
+            <label for="pipeline-timeout">Timeout (minutes)</label>
+            <input type="number" id="pipeline-timeout" placeholder="5" min="1" max="60">
+          </div>
+        </div>
+
+        <div class="settings-actions">
+          <button class="btn-save" id="save-settings-btn">Save Settings</button>
+          <span id="settings-status"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+release/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+nul
+
+# IDE
+.vscode/
+.idea/
+
+# Project data (client-specific migration projects)
+data/
+
+# Local Claude settings
+.claude/settings.local.json
+
+# Config (contains sensitive paths/credentials)
+# Users should configure via Settings tab
+# .sqlwhisperer/
+
+# Electron build artifacts
+*.app
+*.exe
+*.msi
+*.dmg
