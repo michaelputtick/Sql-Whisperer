@@ -16,14 +16,14 @@ This Business Central extension provides migration result tracking for use with 
 
 ## Object IDs
 
-This extension uses the 70100-70149 ID range:
+This extension uses the 50100-50199 ID range:
 
 | Object | ID | Name |
 |--------|-----|------|
-| Enum | 70100 | SQLW Migration Result Status |
-| Table | 70101 | SQLW Migration Result |
-| Page | 70102 | SQLW Migration Result List |
-| Page | 70103 | SQLW Migration Result API |
+| Enum | 50109 | SQLW Migration Result Status |
+| Table | 50139 | SQLW Migration Result |
+| Page | 50180 | SQLW Migration Result API |
+| Page | 50181 | SQLW Migration Result List |
 
 ## API Endpoint
 
